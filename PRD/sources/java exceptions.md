@@ -58,7 +58,9 @@
     - Use to explicitly trigger exception (e.g., throw new IllegalArgumentException("bad input")).
 
 15. **Custom Exception**
+
     ```java
     class MyException extends Exception {}
     ```
+
     Use when you want to create domain-specific error types (e.g., InvalidUserException).

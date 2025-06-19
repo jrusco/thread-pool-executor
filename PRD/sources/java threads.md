@@ -40,25 +40,31 @@
 
 10. **ExecutorService → Thread Pool Manager**
    `ExecutorService pool = Executors.newFixedThreadPool(5);`
-   - Manages thread reuse.
-   - Use instead of manual thread creation (e.g., running 10 tasks in a pool of 3 threads).
+
+- Manages thread reuse.
+- Use instead of manual thread creation (e.g., running 10 tasks in a pool of 3 threads).
 
 11. **Future<T> → Result of Async Task**
-   - Returned by submit(Callable).
-   - Use to get result of async operation (e.g., future.get() blocks until result is ready).
+
+- Returned by submit(Callable).
+- Use to get result of async operation (e.g., future.get() blocks until result is ready).
 
 12. **CompletableFuture → Modern Async Tool**
-   - Used for non-blocking, chainable async operations.
-   - Use for composing async workflows (e.g., fetch → process → save).
+
+- Used for non-blocking, chainable async operations.
+- Use for composing async workflows (e.g., fetch → process → save).
 
 13. **Thread.setDaemon(true) → Daemon Thread**
-   - Runs in background, doesn’t block JVM shutdown.
-   - Use for background logging, cleanup tasks (e.g., heartbeat pings).
+
+- Runs in background, doesn’t block JVM shutdown.
+- Use for background logging, cleanup tasks (e.g., heartbeat pings).
 
 14. **ReentrantLock → Explicit Locking**
-   - More flexible than synchronized.
-   - Use when fine-grained control needed (e.g., tryLock, fairness).
+
+- More flexible than synchronized.
+- Use when fine-grained control needed (e.g., tryLock, fairness).
 
 15. **wait() / notify() → Thread Communication**
-   - Used for coordination between threads.
-   - Use in producer-consumer problems (e.g., waiting for queue to have data).
+
+- Used for coordination between threads.
+- Use in producer-consumer problems (e.g., waiting for queue to have data).
