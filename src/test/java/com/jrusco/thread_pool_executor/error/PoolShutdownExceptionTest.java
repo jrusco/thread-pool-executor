@@ -3,16 +3,16 @@ package com.jrusco.thread_pool_executor.error;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
-class PoolShutdownExcceptionTest {
+class PoolShutdownExceptionTest {
     @Test
     void testDefaultMessage() {
-        PoolShutdownExcception ex = new PoolShutdownExcception();
+        PoolShutdownException ex = new PoolShutdownException();
         assertEquals("The thread pool executor has been shutdown", ex.getMessage());
     }
 
     @Test
     void testCustomMessage() {
-        PoolShutdownExcception ex = new PoolShutdownExcception("Custom message");
+        PoolShutdownException ex = new PoolShutdownException("Custom message");
         assertEquals("Custom message", ex.getMessage());
     }
 }
