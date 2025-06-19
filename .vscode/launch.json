@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-ThreadPoolExecutorApplication<thread-pool-executor>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.jrusco.thread_pool_executor.ThreadPoolExecutorApplication",
+            "projectName": "thread-pool-executor",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
