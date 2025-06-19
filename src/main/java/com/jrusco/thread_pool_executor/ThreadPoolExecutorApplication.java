@@ -1,13 +1,13 @@
-package com.jrusco.thread_pool_executer;
+package com.jrusco.thread_pool_executor;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ThreadPoolExecuterApplication {
+public class ThreadPoolExecutorApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(ThreadPoolExecuterApplication.class, args);
+		SpringApplication.run(ThreadPoolExecutorApplication.class, args);
 	}
 
 }
