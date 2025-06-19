@@ -1,17 +1,19 @@
 package com.jrusco.thread_pool_executor;
 
-import java.util.Set;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
+import com.jrusco.thread_pool_executor.error.PoolShutdownException;
+
 public interface TaskExecutor extends Executor, AutoCloseable{
     
-    void execute(Runnable task);
+    void execute(Runnable task) throws PoolShutdownException;
 
-    <T> Future<T> execute(Callable<T> task);
+    <T> Future<T> execute(Callable<T> task) throws PoolShutdownException;
 
-    Set<Runnable> shutdown();
+    List<Runnable> shutdown();
 
-    Set<Runnable> shutdownAndAwaitTermination();
+    List<Runnable> shutdownAndAwaitTermination();
 }
