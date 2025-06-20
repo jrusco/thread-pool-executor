@@ -19,7 +19,7 @@ public class SimpleThreadPool implements TaskExecutor {
     private static final Integer POOL_SIZE_DEFAULT = 10;
     private static final Logger LOGGER = LoggerFactory.getLogger(SimpleThreadPool.class);
 
-    private boolean shutdown = false;
+    private volatile boolean shutdown = false;
     private LinkedBlockingQueue<FutureTask<?>> tasks;
     private List<Thread> workerThreads;
 
