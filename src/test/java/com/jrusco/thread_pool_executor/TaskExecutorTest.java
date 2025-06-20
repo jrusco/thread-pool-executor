@@ -2,7 +2,7 @@ package com.jrusco.thread_pool_executor;
 
 import org.junit.jupiter.api.Test;
 import java.util.Collections;
-import java.util.Set;
+import java.util.List;
 import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,14 +26,14 @@ class TaskExecutorTest {
         }
 
         @Override
-        public Set<Runnable> shutdown() {
+        public List<Runnable> shutdown() {
             isShutdown = true;
             executor.shutdown();
-            return Collections.emptySet();
+            return Collections.emptyList();
         }
 
         @Override
-        public Set<Runnable> shutdownAndAwaitTermination() {
+        public List<Runnable> shutdownAndAwaitTermination() {
             isShutdown = true;
             executor.shutdown();
             try {
@@ -43,12 +43,18 @@ class TaskExecutorTest {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException("Thread interrupted while awaiting termination", ignored);
             }
-            return Collections.emptySet();
+            return Collections.emptyList();
         }
 
         @Override
         public void close() {
             shutdown();
+        }
+
+        @Override
+        public boolean isShutdown() {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'isShutdown'");
         }
     }
 
@@ -72,7 +78,7 @@ class TaskExecutorTest {
     @Test
     void testShutdown() {
         try (SimpleTaskExecutor exec = new SimpleTaskExecutor()) {
-            Set<Runnable> tasks = exec.shutdown();
+            List<Runnable> tasks = exec.shutdown();
             assertTrue(tasks.isEmpty());
         }
     }
@@ -80,7 +86,7 @@ class TaskExecutorTest {
     @Test
     void testShutdownAndAwaitTermination() {
         try (SimpleTaskExecutor exec = new SimpleTaskExecutor()) {
-            Set<Runnable> tasks = exec.shutdownAndAwaitTermination();
+            List<Runnable> tasks = exec.shutdownAndAwaitTermination();
             assertTrue(tasks.isEmpty());
         }
     }
