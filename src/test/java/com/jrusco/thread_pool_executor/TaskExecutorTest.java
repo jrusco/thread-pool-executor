@@ -7,21 +7,24 @@ import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TaskExecutorTest {
-    static class SimpleTaskExecutor implements TaskExecutor {
+
+    static class SimpleTaskExecutor implements TaskExecutor, AutoCloseable {
         private final ExecutorService executor = Executors.newSingleThreadExecutor();
-        private boolean isShutdown = false;
+        private volatile boolean isShutdown = false;
 
         @Override
         public void execute(Runnable task) {
-            if (isShutdown)
+            if (isShutdown) {
                 throw new RuntimeException("Executor is shutdown");
+            }
             executor.execute(task);
         }
 
         @Override
         public <T> Future<T> execute(Callable<T> task) {
-            if (isShutdown)
+            if (isShutdown) {
                 throw new RuntimeException("Executor is shutdown");
+            }
             return executor.submit(task);
         }
 
@@ -38,10 +41,9 @@ class TaskExecutorTest {
             executor.shutdown();
             try {
                 executor.awaitTermination(1, TimeUnit.SECONDS);
-            } catch (InterruptedException ignored) {
-                // In tests, interruption is not expected. If it happens, fail the test.
+            } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
-                throw new RuntimeException("Thread interrupted while awaiting termination", ignored);
+                throw new RuntimeException("Thread interrupted while awaiting termination", ex);
             }
             return Collections.emptyList();
         }
@@ -53,41 +55,90 @@ class TaskExecutorTest {
 
         @Override
         public boolean isShutdown() {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'isShutdown'");
+            return isShutdown;
         }
     }
 
     @Test
-    void testExecuteRunnable() throws InterruptedException {
+    void test_givenExecuteRunnable_whenRunnableSubmitted_thenRunnableIsExecuted() throws InterruptedException {
+        // Arrange
         try (SimpleTaskExecutor exec = new SimpleTaskExecutor()) {
             final CountDownLatch latch = new CountDownLatch(1);
+
+            // Act
             exec.execute(latch::countDown);
-            assertTrue(latch.await(1, TimeUnit.SECONDS));
+
+            // Assert
+            assertTrue(latch.await(1, TimeUnit.SECONDS), "Runnable should decrement latch within timeout");
         }
     }
 
     @Test
-    void testExecuteCallable() throws Exception {
+    void test_givenExecuteCallable_whenCallableSubmitted_thenReturnsExpectedResult() throws Exception {
+        // Arrange
         try (SimpleTaskExecutor exec = new SimpleTaskExecutor()) {
+            // Act
             Future<Integer> future = exec.execute(() -> 42);
-            assertEquals(42, future.get());
+
+            // Assert
+            assertEquals(42, future.get(), "Callable should return 42");
         }
     }
 
     @Test
-    void testShutdown() {
+    void test_givenShutdown_whenCalled_thenExecutorIsShutdownAndReturnsEmptyList() {
+        // Arrange
         try (SimpleTaskExecutor exec = new SimpleTaskExecutor()) {
+            // Act
             List<Runnable> tasks = exec.shutdown();
-            assertTrue(tasks.isEmpty());
+
+            // Assert
+            assertTrue(tasks.isEmpty(), "Shutdown should return empty list");
+            assertTrue(exec.isShutdown(), "Executor should be marked as shutdown");
         }
     }
 
     @Test
-    void testShutdownAndAwaitTermination() {
+    void test_givenShutdownAndAwaitTermination_whenCalled_thenExecutorIsShutdownAndReturnsEmptyList() {
+        // Arrange
         try (SimpleTaskExecutor exec = new SimpleTaskExecutor()) {
+            // Act
             List<Runnable> tasks = exec.shutdownAndAwaitTermination();
-            assertTrue(tasks.isEmpty());
+
+            // Assert
+            assertTrue(tasks.isEmpty(), "ShutdownAndAwaitTermination should return empty list");
+            assertTrue(exec.isShutdown(), "Executor should be marked as shutdown");
+        }
+    }
+
+    @Test
+    void test_givenExecuteAfterShutdown_whenSubmittingTask_thenThrowsException() {
+        // Arrange
+        try (SimpleTaskExecutor exec = new SimpleTaskExecutor()) {
+            exec.shutdown();
+
+            // Act & Assert
+            assertThrows(RuntimeException.class, () -> exec.execute(() -> {
+            }), "Should throw when executing Runnable after shutdown");
+            assertThrows(RuntimeException.class, () -> exec.execute(() -> 1),
+                    "Should throw when executing Callable after shutdown");
+        }
+    }
+
+    @Test
+    void test_givenTaskThrowsException_whenExecuted_thenExecutorContinuesOperating() throws Exception {
+        // Arrange
+        try (SimpleTaskExecutor exec = new SimpleTaskExecutor()) {
+            // Act
+            exec.execute(() -> {
+                throw new RuntimeException("fail");
+            });
+
+            // Submit another task to ensure executor is still operational
+            Future<Integer> future = exec.execute(() -> 123);
+
+            // Assert
+            assertEquals(123, future.get(), "Executor should continue operating after a task throws");
         }
     }
 }
