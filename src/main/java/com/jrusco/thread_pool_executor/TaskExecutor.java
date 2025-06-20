@@ -16,4 +16,6 @@ public interface TaskExecutor extends Executor, AutoCloseable{
     List<Runnable> shutdown();
 
     List<Runnable> shutdownAndAwaitTermination();
+
+    boolean isShutdown();
 }
