@@ -6,6 +6,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -15,22 +16,27 @@ import com.jrusco.thread_pool_executor.error.PoolShutdownException;
 
 public class SimpleThreadPool implements TaskExecutor {
 
-    private static final Integer TASK_QUEUE_SIZE_DEFAULT = 100;
-    private static final Integer POOL_SIZE_DEFAULT = 10;
-    private static final Logger LOGGER = LoggerFactory.getLogger(SimpleThreadPool.class);
+    private static final int TASK_QUEUE_SIZE_DEFAULT = 100;
+    private static final int THREAD_POOL_SIZE_DEFAULT = 10;
+    private static final int THREAD_DEFAULT_TTL_MS = 100;
+    private static final Logger LOGGER = LoggerFactory.getLogger(SimpleThreadPool.class); 
 
-    private volatile boolean shutdown = false;
     private LinkedBlockingQueue<FutureTask<?>> tasks;
     private List<Thread> workerThreads;
+    private volatile boolean shutdown = false;
+    private int threadLifeSpanMs = THREAD_DEFAULT_TTL_MS;
 
-    public SimpleThreadPool(int poolSize) {
+    public SimpleThreadPool(int currentPoolSize, int maxPoolSize) {
 
-        if (poolSize <= 0) {
-            poolSize = POOL_SIZE_DEFAULT;
+        if (currentPoolSize <= 0) {
+            currentPoolSize = THREAD_POOL_SIZE_DEFAULT;
+        }
+        if (maxPoolSize <= 0) {
+            maxPoolSize = THREAD_POOL_SIZE_DEFAULT;
         }
 
-        workerThreads = new ArrayList<>(poolSize);
-        for (int i = 0; i < poolSize; i++) {
+        workerThreads = new ArrayList<>(maxPoolSize);
+        for (int i = 0; i < currentPoolSize; i++) {
             Thread workerThread = new Thread(new Worker(), "thread-pool-worker-" + i);
             workerThreads.add(workerThread);
             workerThread.start();
@@ -108,14 +114,24 @@ public class SimpleThreadPool implements TaskExecutor {
         return shutdown;
     }
 
-    private class Worker implements Runnable {
-        private static final int WORKER_TIMEOUT_MS = 100;
+    public int getThreadLifeSpanMs(){
+        return this.threadLifeSpanMs;
+    }
 
+    public void setThreadLifeSpanMs(int newLifeSpanMs){
+        if (newLifeSpanMs > 0){
+            this.threadLifeSpanMs = newLifeSpanMs;
+            LOGGER.debug("SimpleThreadPool - msg=[New value for thread life span is set up], threadLifeSpanMs=[{}]", 
+                    this.threadLifeSpanMs);
+        }
+    }
+
+    private class Worker implements Runnable {
         @Override
         public void run() {
             while (!shutdown || !tasks.isEmpty()) {
                 try {
-                    FutureTask<?> task = tasks.poll(WORKER_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                    FutureTask<?> task = tasks.poll(threadLifeSpanMs, TimeUnit.MILLISECONDS);
                     if (task != null) {
                         try {
                             task.run();
