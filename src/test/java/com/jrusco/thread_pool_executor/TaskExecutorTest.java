@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class TaskExecutorTest {
 
-    static class SimpleTaskExecutor implements TaskExecutor, AutoCloseable {
+    static class SimpleTaskExecutor implements TaskExecutor {
         private final ExecutorService executor = Executors.newSingleThreadExecutor();
         private volatile boolean isShutdown = false;
 

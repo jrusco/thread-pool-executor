@@ -7,7 +7,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
@@ -33,7 +32,7 @@ public class SimpleThreadPool implements TaskExecutor {
 
     public SimpleThreadPool(int startingPoolSize, int maxPoolSize, RejectedTaskExecutionManager rejectionPolicy) {
 
-        //initialize the thread pool 
+        // initialize the thread pool
         if (startingPoolSize <= 0) {
             startingPoolSize = THREAD_POOL_SIZE_DEFAULT;
         }
@@ -47,14 +46,14 @@ public class SimpleThreadPool implements TaskExecutor {
             workerThread.start();
         }
 
-        //initialize the task queue
-        this.tasks = new LinkedBlockingQueue<FutureTask<?>>(TASK_QUEUE_SIZE_DEFAULT);
+        // initialize the task queue
+        this.tasks = new LinkedBlockingQueue<>(TASK_QUEUE_SIZE_DEFAULT);
 
-        //set the rejection policy
-        if (Objects.isNull(rejectionPolicy)){
+        // set the rejection policy
+        if (Objects.isNull(rejectionPolicy)) {
             this.rejectionPolicy = REJECTION_POLICY_DEFAULT;
-            LOGGER.debug("SimpleThreadPool - msg=[No rejection policy specified: Setting default policy], rejectionPolicy=[{}]", 
-                this.rejectionPolicy);
+            LOGGER.debug("msg=[No rejection policy specified: Setting default policy], rejectionPolicy=[{}]",
+                    this.rejectionPolicy);
         }
         this.rejectionPolicy = rejectionPolicy;
     }
@@ -62,12 +61,12 @@ public class SimpleThreadPool implements TaskExecutor {
     @Override
     public void execute(Runnable task) throws PoolShutdownException {
         if (isShutdown()) {
-            LOGGER.info("SimpleThreadPool - msg=[Cannot queue task, thread pool is shutting down]");
+            LOGGER.info("msg=[Cannot queue task, thread pool is shutting down]");
             throw new PoolShutdownException();
         }
 
         FutureTask<?> futureTask = new FutureTask<>(task, null);
-        if (!tasks.offer(futureTask)){
+        if (!tasks.offer(futureTask)) {
             rejectionPolicy.handleRejection(futureTask, "Task queue is full, task rejected");
         }
     }
@@ -75,29 +74,29 @@ public class SimpleThreadPool implements TaskExecutor {
     @Override
     public <T> Future<T> execute(Callable<T> task) throws PoolShutdownException {
         if (isShutdown()) {
-            LOGGER.info("SimpleThreadPool - msg=[Cannot queue task, thread pool is shutting down]");
+            LOGGER.info("msg=[Cannot queue task, thread pool is shutting down]");
             throw new PoolShutdownException();
         }
         FutureTask<T> futureTask = new FutureTask<>(task);
         tasks.add(futureTask);
-        LOGGER.debug("SimpleThreadPool - msg=[Callable task added to the queue successfully]");
+        LOGGER.debug("msg=[Callable task added to the queue successfully]");
         return futureTask;
     }
 
     @Override
     public List<Runnable> shutdown() {
-        LOGGER.info("SimpleThreadPool - msg=[Shutdown requested]");
+        LOGGER.info("msg=[Shutdown requested]");
         this.shutdown = true;
         for (Thread worker : workerThreads) {
             worker.interrupt();
         }
-        LOGGER.info("SimpleThreadPool - msg=[Shutdown completed], remainingTasksCount=[{}]", tasks.size());
+        LOGGER.info("msg=[Shutdown completed], remainingTasksCount=[{}]", tasks.size());
         return new ArrayList<>(tasks);
     }
 
     @Override
     public List<Runnable> shutdownAndAwaitTermination() {
-        LOGGER.info("SimpleThreadPool - msg=[Shutdown and await termination requested]");
+        LOGGER.info("msg=[Shutdown and await termination requested]");
         this.shutdown = true;
 
         for (Thread worker : workerThreads) {
@@ -110,19 +109,19 @@ public class SimpleThreadPool implements TaskExecutor {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 LOGGER.warn(
-                        "SimpleThreadPool - msg=[Thread interrupted while waiting for worker to terminate], workerName=[{}]",
+                        "msg=[Thread interrupted while waiting for worker to terminate], workerName=[{}]",
                         worker.getName());
             }
         }
 
-        LOGGER.info("SimpleThreadPool - msg=[Shutdown and await termination completed], remainingTasksCount=[{}]",
+        LOGGER.info("msg=[Shutdown and await termination completed], remainingTasksCount=[{}]",
                 tasks.size());
         return new ArrayList<>(tasks);
     }
 
     @Override
     public void close() throws Exception {
-        LOGGER.info("SimpleThreadPool - msg=[close() called, initiating shutdown and awaiting termination]");
+        LOGGER.info("msg=[close() called, initiating shutdown and awaiting termination]");
         shutdownAndAwaitTermination();
     }
 
@@ -131,14 +130,14 @@ public class SimpleThreadPool implements TaskExecutor {
         return shutdown;
     }
 
-    public int getThreadLifeSpanMs(){
+    public int getThreadLifeSpanMs() {
         return this.threadLifeSpanMs;
     }
 
-    public void setThreadLifeSpanMs(int newLifeSpanMs){
-        if (newLifeSpanMs > 0){
+    public void setThreadLifeSpanMs(int newLifeSpanMs) {
+        if (newLifeSpanMs > 0) {
             this.threadLifeSpanMs = newLifeSpanMs;
-            LOGGER.debug("SimpleThreadPool - msg=[New value for thread life span is set up], threadLifeSpanMs=[{}]", 
+            LOGGER.debug("msg=[New value for thread life span is set up], threadLifeSpanMs=[{}]",
                     this.threadLifeSpanMs);
         }
     }
@@ -150,24 +149,28 @@ public class SimpleThreadPool implements TaskExecutor {
                 try {
                     FutureTask<?> task = tasks.poll(threadLifeSpanMs, TimeUnit.MILLISECONDS);
                     if (task != null) {
-                        try {
-                            task.run();
-                            LOGGER.debug("SimpleThreadPool - msg=[Task executed successfully], workerName=[{}]",
-                                    Thread.currentThread().getName());
-                        } catch (Exception e) {
-                            LOGGER.error("SimpleThreadPool - msg=[Task execution failed], workerName=[{}]",
-                                    Thread.currentThread().getName(), e);
-                        }
+                        executeTask(task);
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    LOGGER.info("SimpleThreadPool - msg=[Worker thread interrupted, shutting down], workerName=[{}]",
+                    LOGGER.info("msg=[Worker thread interrupted, shutting down], workerName=[{}]",
                             Thread.currentThread().getName());
                     break;
                 }
             }
-            LOGGER.info("SimpleThreadPool - msg=[Worker thread exiting], workerName=[{}]",
+            LOGGER.info("msg=[Worker thread exiting], workerName=[{}]",
                     Thread.currentThread().getName());
+        }
+
+        private void executeTask(FutureTask<?> task) {
+            try {
+                task.run();
+                LOGGER.debug("msg=[Task executed successfully], workerName=[{}]",
+                        Thread.currentThread().getName());
+            } catch (Exception e) {
+                LOGGER.error("msg=[Task execution failed], workerName=[{}]",
+                        Thread.currentThread().getName(), e);
+            }
         }
     }
 }
