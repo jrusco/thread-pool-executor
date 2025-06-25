@@ -1,5 +1,6 @@
 package com.jrusco.thread_pool_executor;
 
+import com.jrusco.thread_pool_executor.error.LogFailureAndContinuePolicy;
 import com.jrusco.thread_pool_executor.error.PoolShutdownException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +18,7 @@ class SimpleThreadPoolTest {
 
     @BeforeEach
     void setUp() {
-        pool = new SimpleThreadPool(4);
+        pool = new SimpleThreadPool(4, 10, new LogFailureAndContinuePolicy());
     }
 
     @AfterEach

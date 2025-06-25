@@ -2,6 +2,7 @@ package com.jrusco.thread_pool_executor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
@@ -12,37 +13,50 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.jrusco.thread_pool_executor.error.LogFailureAndContinuePolicy;
 import com.jrusco.thread_pool_executor.error.PoolShutdownException;
+import com.jrusco.thread_pool_executor.error.RejectedTaskExecutionManager;
 
 public class SimpleThreadPool implements TaskExecutor {
 
+    private static final RejectedTaskExecutionManager REJECTION_POLICY_DEFAULT = new LogFailureAndContinuePolicy();
+    private static final Logger LOGGER = LoggerFactory.getLogger(SimpleThreadPool.class);
     private static final int TASK_QUEUE_SIZE_DEFAULT = 100;
     private static final int THREAD_POOL_SIZE_DEFAULT = 10;
     private static final int THREAD_DEFAULT_TTL_MS = 100;
-    private static final Logger LOGGER = LoggerFactory.getLogger(SimpleThreadPool.class); 
 
     private LinkedBlockingQueue<FutureTask<?>> tasks;
     private List<Thread> workerThreads;
+    private RejectedTaskExecutionManager rejectionPolicy;
     private volatile boolean shutdown = false;
-    private int threadLifeSpanMs = THREAD_DEFAULT_TTL_MS;
+    private volatile int threadLifeSpanMs = THREAD_DEFAULT_TTL_MS;
 
-    public SimpleThreadPool(int currentPoolSize, int maxPoolSize) {
+    public SimpleThreadPool(int startingPoolSize, int maxPoolSize, RejectedTaskExecutionManager rejectionPolicy) {
 
-        if (currentPoolSize <= 0) {
-            currentPoolSize = THREAD_POOL_SIZE_DEFAULT;
+        //initialize the thread pool 
+        if (startingPoolSize <= 0) {
+            startingPoolSize = THREAD_POOL_SIZE_DEFAULT;
         }
         if (maxPoolSize <= 0) {
             maxPoolSize = THREAD_POOL_SIZE_DEFAULT;
         }
-
         workerThreads = new ArrayList<>(maxPoolSize);
-        for (int i = 0; i < currentPoolSize; i++) {
+        for (int i = 0; i < startingPoolSize; i++) {
             Thread workerThread = new Thread(new Worker(), "thread-pool-worker-" + i);
             workerThreads.add(workerThread);
             workerThread.start();
         }
 
+        //initialize the task queue
         this.tasks = new LinkedBlockingQueue<FutureTask<?>>(TASK_QUEUE_SIZE_DEFAULT);
+
+        //set the rejection policy
+        if (Objects.isNull(rejectionPolicy)){
+            this.rejectionPolicy = REJECTION_POLICY_DEFAULT;
+            LOGGER.debug("SimpleThreadPool - msg=[No rejection policy specified: Setting default policy], rejectionPolicy=[{}]", 
+                this.rejectionPolicy);
+        }
+        this.rejectionPolicy = rejectionPolicy;
     }
 
     @Override
@@ -51,8 +65,11 @@ public class SimpleThreadPool implements TaskExecutor {
             LOGGER.info("SimpleThreadPool - msg=[Cannot queue task, thread pool is shutting down]");
             throw new PoolShutdownException();
         }
-        tasks.add(new FutureTask<>(task, null));
-        LOGGER.debug("SimpleThreadPool - msg=[Runnable task added to the queue successfully]");
+
+        FutureTask<?> futureTask = new FutureTask<>(task, null);
+        if (!tasks.offer(futureTask)){
+            rejectionPolicy.handleRejection(futureTask, "Task queue is full, task rejected");
+        }
     }
 
     @Override
